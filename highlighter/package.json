@@ -1,0 +1,29 @@
+{
+  "name": "luapp-lang",
+  "displayName": "Lua++ Lang",
+  "description": "Syntax highlighting for Lua++.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "luapp",
+      "aliases": ["Lua++", "luapp"],
+      "icon": {
+        "light": "./Logo.png",
+        "dark": "./Logo.png"
+      },
+      "extensions": [".luapp"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "luapp",
+      "scopeName": "source.luapp",
+      "path": "./syntaxes/luapp.tmLanguage.json"
+    }]
+  }
+}
