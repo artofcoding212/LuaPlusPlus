@@ -281,7 +281,7 @@ function compiler.CompileObjectExpr(node)
             result = result.."\t"..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt).." = "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Value}::Ast.ExprStmt)..",\n"
         else
             local keyExpression: string = compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt)
-            result = result.."\t"..keyExpression.." = "..keyExpression..",\n"
+            result = result.."\t".."["..keyExpression.."] = "..keyExpression..",\n"
         end
     end
     
