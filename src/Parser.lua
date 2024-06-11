@@ -261,7 +261,7 @@ function parser.ParseIfStmt()
     table.remove(parser.tokens, 1)
     
     if parser.tokens[1].Type ~= "open_paren" then
-        error("Lua++/Parser -> Expected an open parenthesis following the \"for\" keyword whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")
+        error("Lua++/Parser -> Expected an open parenthesis following the \"if\" keyword whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")
     end
     
     table.remove(parser.tokens, 1)
@@ -513,7 +513,7 @@ function parser.ParseSwitchStmt()
     end
 
     table.remove(parser.tokens, 1)
-    return {Kind="switch"::Ast.NodeType, Cases=cases, Default=default}::Ast.Switch
+    return {Kind="switch"::Ast.NodeType, Cases=cases, Default=default, Switcher=switcher}::Ast.Switch
 end
 
 function parser.ParseExpr()
