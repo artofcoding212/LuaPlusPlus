@@ -13,14 +13,7 @@
 ## Introduction
 Lua++ is like the C++ of Roblox's Lua, it adds classes, ontop of some other things, to Roblox's Lua.
 
-## Why Use Lua++?
-There are numerous reasons, however the top ones are listed below:
-* Lua++ is almost as fast as Roblox's Lua.
-* Lua++ adds classes to Roblox's Lua.
-* Lua++ adds the switch keyword to Roblox's Lua.
-* In place of the odd "end" keyword, Lua++ uses curly braces.
-
-## How Can I Use It?
+## Installation
 #### Compiling
 To compile your Lua++ code in Roblox, first get the [latest Roblox model of Lua++](https://create.roblox.com/store/asset/17809928169/Lua-V10) and insert it into anywhere in your game, which usually is in "ReplicatedStorage". Then, you can simply require it and use the "Compile" method that returns a string which can be executed via "loadstring", or other alternatives if you're trying to execute Lua++ on the client.\
 Here's an example of a "Script" object that prints the value of 2 + 2:
