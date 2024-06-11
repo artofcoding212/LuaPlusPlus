@@ -166,9 +166,11 @@ function compiler.CompileSwitchStmt(node, indent)
         result = result.."\n"..string.rep("\t", indent+1).."["..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=key}::Ast.ExprStmt).."] = function()"..(#value > 0 and "\n"..compiler.Compile(value, indent+2).."\n"..string.rep("\t", indent+1) or " ").."end,"
     end
 
-    compiler.switches += 1
+    print(node)
+    local expression = compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Switcher}::Ast.ExprStmt)
+    result = result.."}\nif SWITCH_"..tostring(compiler.switches).."["..expression.."] then\nSWITCH_"..tostring(compiler.switches).."["..expression.."]()\nelse"..(node.Default ~= nil and "\n"..compiler.Compile(node.Default, indent+1) or " ").."end"
 
-    result = result.."}"
+    compiler.switches += 1
 
     return result
 end
