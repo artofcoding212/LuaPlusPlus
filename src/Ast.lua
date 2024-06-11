@@ -160,6 +160,7 @@ export type Member=Expr&{
     Object: Expr;
     Property: Expr;
     Computed: boolean;
+    Colon: boolean;
 }
 
 export type Object=Expr&{

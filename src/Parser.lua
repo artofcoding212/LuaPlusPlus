@@ -721,14 +721,22 @@ end
 function parser.ParseMemberExpr()
     local object = parser.ParseNewExpr()
     
-    while parser.tokens[1].Type == "dot" or parser.tokens[1].Type == "open_bracket" do
+    while parser.tokens[1].Type == "dot" or parser.tokens[1].Type == "colon_colon" or parser.tokens[1].Type == "open_bracket" do
         local operator: Lexer.Token = table.remove(parser.tokens, 1)
         local property: Ast.Expr
         local computed: boolean = false
+        local colon: boolean = false
         
         if operator.Type == "dot" then
             property = parser.ParsePrimaryExpr()
             
+            if property.Kind ~= "identifier" then
+                error("Lua++/Parser -> Expected the expression following a noncomputed member expression to be an identifier whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")
+            end
+        elseif operator.Type == "colon_colon" then
+            property = parser.ParsePrimaryExpr()
+            colon = true
+
             if property.Kind ~= "identifier" then
                 error("Lua++/Parser -> Expected the expression following a noncomputed member expression to be an identifier whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")
             end
@@ -742,10 +750,10 @@ function parser.ParseMemberExpr()
             
             table.remove(parser.tokens, 1)
         else
-            error("Lua++/Parser -> Expected an open bracket or a period to follow a member whilst parsing a member expression, instead got a \""..parser.tokens[1].Type.."\".")
+            error("Lua++/Parser -> Expected an open bracket, a period, or a double colon, to follow a member whilst parsing a member expression, instead got a \""..parser.tokens[1].Type.."\".")
         end
         
-        object = {Kind="member"::Ast.NodeType, Object=object, Property=property, Computed=computed}::Ast.Member
+        object = {Kind="member"::Ast.NodeType, Object=object, Property=property, Computed=computed, Colon=colon}::Ast.Member
     end
     
     return object

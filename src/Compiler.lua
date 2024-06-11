@@ -115,7 +115,7 @@ end
 function compiler.CompileClassDeclarationStmt(node, indent)
     local classObjectType = "type CLASS_"..node.Name.Value.."_OBJ_T = {"
     local classInstanceType = "type CLASS_"..node.Name.Value.."_INST_T = {"
-    local classThis = "local CLASS_"..node.Name.Value.."_THIS = {}"
+    local classThisArray = "local CLASS_"..node.Name.Value.."_THIS_LIST: {CLASS_"..node.Name.Value.."_INST_T} = {}"
     local result = "local "..node.Name.Value..": CLASS_"..node.Name.Value.."_OBJ_T = {new = function("
 
     if node.Initializer then
@@ -135,7 +135,7 @@ function compiler.CompileClassDeclarationStmt(node, indent)
         result = result..parameter.Value..(index ~= #node.Initializer.Parameters and ", " or "")
     end
 
-    result = result..")\n"..string.rep("\t", indent+1).."CLASS_"..node.Name.Value.."_THIS = {"
+    result = result..")\n"..string.rep("\t", indent+1).."local CLASS_"..node.Name.Value.."_THIS_INDEX = #CLASS_"..node.Name.Value.."_THIS_LIST+1\n"..string.rep("\t", indent+1)..string.rep("\t", indent+1).."CLASS_"..node.Name.Value.."_THIS_LIST[CLASS_"..node.Name.Value.."_THIS_INDEX] = {"
 
     for _, variable in node.Variables do
         result = result.."\n"..string.rep("\t", indent+2)..variable.Name.Value.." = "..(variable.Value == nil and "nil" or compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=variable.Value}::Ast.ExprStmt))..","
@@ -152,11 +152,11 @@ function compiler.CompileClassDeclarationStmt(node, indent)
             classInstanceType = classInstanceType..paramter.Value..": any"..(index ~= #method.Parameters and ", " or "")
         end
         
-        result = result..")"..(#method.Body > 0 and "\nlocal this = setmetatable(CLASS_"..node.Name.Value.."_THIS, {})\n"..compiler.Compile(method.Body, indent+3)..string.rep("\t", indent+2) or " ").."end,"
+        result = result..")"..(#method.Body > 0 and "\nlocal this = setmetatable(CLASS_"..node.Name.Value.."_THIS_LIST[CLASS_"..node.Name.Value.."_THIS_INDEX], {})\n"..compiler.Compile(method.Body, indent+3)..string.rep("\t", indent+2) or " ").."end,"
         classInstanceType = classInstanceType..")->any, "
     end
-
-    return classObjectType.."}".."\n"..classInstanceType.."}\n"..classThis.."\n"..result.."\n"..string.rep("\t", indent+1).."}\n"..string.rep("\t", indent+1).."local this = setmetatable(CLASS_"..node.Name.Value.."_THIS, {})\n"..(#node.Initializer.Body > 0 and compiler.Compile(node.Initializer.Body, indent+1) or "\n")..string.rep("\t", indent+1).."\n"..string.rep("\t", indent+1).."return this\nend}"
+    
+    return classObjectType.."}".."\n"..classInstanceType.."}\n"..classThisArray.."\n"..result.."\n"..string.rep("\t", indent+1).."}\n"..string.rep("\t", indent+1).."local this = setmetatable(CLASS_"..node.Name.Value.."_THIS_LIST[CLASS_"..node.Name.Value.."_THIS_INDEX], {})\n"..(#node.Initializer.Body > 0 and compiler.Compile(node.Initializer.Body, indent+1) or "\n")..string.rep("\t", indent+1).."\n"..string.rep("\t", indent+1).."return this\nend}"
 end
 
 function compiler.CompileSwitchStmt(node, indent)
@@ -254,7 +254,7 @@ function compiler.CompileMemberExpr(node, indent)
         return result.."["..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Property}::Ast.ExprStmt).."]"
     end
 
-    return result.."."..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Property}::Ast.ExprStmt)
+    return result..(node.Colon and ":" or ".")..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Property}::Ast.ExprStmt)
 end
 
 function compiler.CompileCallExpr(node, indent)

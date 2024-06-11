@@ -16,6 +16,7 @@ export type TokenType=
     "close_brace" |
     "semicolon" |
     "colon" |
+    "colon_colon" |
     "comma" |
     "dot" |
     "dot_dot" |
@@ -171,10 +172,18 @@ function lexer.Tokenize(source: string)
             [","] = function() table.insert(lexer.Tokens, {Type="comma", Value=table.remove(lexer.source, 1)}::Token) end,
             ["{"] = function() table.insert(lexer.Tokens, {Type="open_brace", Value=table.remove(lexer.source, 1)}::Token) end,
             ["}"] = function() table.insert(lexer.Tokens, {Type="close_brace", Value=table.remove(lexer.source, 1)}::Token) end,
-            [":"] = function() table.insert(lexer.Tokens, {Type="colon", Value=table.remove(lexer.source, 1)}::Token) end,
             ["("] = function() table.insert(lexer.Tokens, {Type="open_paren", Value=table.remove(lexer.source, 1)}::Token) end,
             [")"] = function() table.insert(lexer.Tokens, {Type="close_paren", Value=table.remove(lexer.source, 1)}::Token) end,
             [";"] = function() table.insert(lexer.Tokens, {Type="semicolon", Value=table.remove(lexer.source, 1)}::Token) end,
+            [":"] = function()
+                table.remove(lexer.source, 1)
+
+                if lexer.source[1] == ":" then
+                    table.insert(lexer.Tokens, {Type="colon_colon", Value=":"..table.remove(lexer.source, 1)}::Token)
+                else
+                    table.insert(lexer.Tokens, {Type="colon", Value=":"}::Token)
+                end
+            end,
             ["="] = function()
                 table.remove(lexer.source, 1)
 
