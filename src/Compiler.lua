@@ -247,10 +247,6 @@ function compiler.CompileMemberExpr(node, indent)
     local result: string = compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Object}::Ast.ExprStmt)
 
     if node.Computed then
-        if node.Property.Kind == "number" then
-            (node.Property::Ast.Number).Value += 1
-        end
-
         return result.."["..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Property}::Ast.ExprStmt).."]"
     end
 
