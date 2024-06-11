@@ -50,9 +50,10 @@ export type Program=Stmt&{
 }
 
 export type For=Stmt&{
-    Variables: {Identifier};
-    Iterator: Expr;
+    Variables: {Expr};
+    Iterator: {Expr};
     Body: {Stmt},
+    In: boolean,
 }
 
 export type While=Stmt&{

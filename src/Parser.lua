@@ -169,14 +169,10 @@ function parser.ParseForStmt()
     table.remove(parser.tokens, 1)
     
     local variables: {Ast.Identifier}={}
-    local iterator: Ast.Expr={}
+    local iterator: {Ast.Expr}={}
     
-    if parser.tokens[1].Type ~= "identifier" then
-        error("Lua++/Parser -> Expected at least one for loop variable whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")
-    end
-    
-    while parser.tokens[1].Type == "identifier" do
-        table.insert(variables, {Kind="identifier"::Ast.NodeType, Value=table.remove(parser.tokens, 1).Value}::Ast.Identifier)
+    while parser.tokens[1].Type ~= "close_paren" and parser.tokens[1].Type ~= "in" do
+        table.insert(variables, parser.ParseExpr())
         
         if parser.tokens[1].Type ~= "comma" then
             break
@@ -185,13 +181,18 @@ function parser.ParseForStmt()
         end
     end
     
-    if parser.tokens[1].Type ~= "in" then
-        error("Lua++/Parser -> Expected the \"in\" keyword following the for loop variable declarations whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")
+    if parser.tokens[1].Type == "in" then
+        table.remove(parser.tokens, 1)
+
+        while parser.tokens[1].Type ~= "eof" and parser.tokens[1].Type ~= "close_paren" do
+            table.insert(iterator, parser.ParseExpr())
+
+            if parser.tokens[1].Type ~= "comma" then
+            else
+                table.remove(parser.tokens, 1)
+            end
+        end
     end
-    
-    table.remove(parser.tokens, 1)
-    
-    iterator = parser.ParseExpr()
     
     if parser.tokens[1].Type ~= "close_paren" then
         error("Lua++/Parser -> Expected a closing parenthesis following the for loop data whilst parsing, instead got a \""..parser.tokens[1].Type.."\".")

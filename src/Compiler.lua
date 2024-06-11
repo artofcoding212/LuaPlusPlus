@@ -82,10 +82,18 @@ function compiler.CompileForStmt(node, indent)
     local result = "for "
 
     for index, variable in node.Variables do
-        result = result..variable.Value..(#node.Variables ~= index and ", " or "")
+        result = result..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=variable}::Ast.ExprStmt)..(#node.Variables ~= index and ", " or "")
+    end
+    
+    if #node.Iterator > 0 then
+        result = result.." in "
+        
+        for index, iterator in node.Iterator do
+            result = result..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=iterator}::Ast.ExprStmt)..(#node.Iterator ~= index and ", " or "")
+        end
     end
 
-    return result.." in "..compiler.Compile({{Kind="expression_statement"::Ast.NodeType, Value=node.Iterator}::Ast.ExprStmt}, 0, true).." do"..(#node.Body > 0 and "\n"..compiler.Compile(node.Body, indent+1) or " ").."end"
+    return result.." do"..(#node.Body > 0 and "\n"..compiler.Compile(node.Body, indent+1) or " ").."end"
 end
 
 function compiler.CompileWhileStmt(node, indent)
