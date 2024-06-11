@@ -1,4 +1,4 @@
---NOTE: This is to be parented under the "luapp.lua" file.
+--NOTE: This file is designed to be parented under the "luapp.lua" file.
 
 --// Types //--
 
@@ -18,6 +18,7 @@ export type TokenType=
     "colon" |
     "comma" |
     "dot" |
+    "dot_dot" |
     "equals" |
     "assignment" |
     "bang_equals" |
@@ -74,14 +75,14 @@ export type Lexer={
     Keywords: {[string]: TokenType};
     Tokens: {Token};
     source: {string};
-    
+
     Alphabetic: (text: string)->boolean;
     Numeric: (text: string)->boolean;
     Skippable: (text: string)->boolean;
-    
+
     CollectString: ()->();
     CollectComment: ()->();
-    
+
     Tokenize: (source: string)->{Token};
 }
 
@@ -128,19 +129,19 @@ end
 function lexer.CollectString()
     local start: string = table.remove(lexer.source, 1)
     local value: string = ""
-    
-    while type(lexer.source[1]) == "string" and lexer.source[1] ~= "\"" and lexer.source[1] ~= "'" do
+
+    while type(lexer.source[1]) == "string" and lexer.source[1] ~= start do
         value = value..table.remove(lexer.source, 1)
     end
-    
+
     if type(lexer.source[1]) ~= "string" then
         error("Lua++/Lexer -> An endless string was provided whilst tokenizing a string.")
     end
-    
+
     if lexer.source[1] ~= start then
-        error("Lua++/Lexer -> Expected a string to end with \"" + start + "\" whilst tokenizing, instead \"" + lexer.source[1] + "\" was given.")
+        error("Lua++/Lexer -> Expected a string to end with \""..start.."\" whilst tokenizing, instead \"" + lexer.source[1] + "\" was given.")
     end
-    
+
     table.remove(lexer.source, 1)
     table.insert(lexer.Tokens, {Type="string", Value=value}::Token)
 end
@@ -149,10 +150,10 @@ function lexer.CollectComment()
     if type(lexer.source[2]) ~= "string" or lexer.source[2] ~= "/" then
         return
     end
-    
+
     table.remove(lexer.source, 1)
     table.remove(lexer.source, 1)
-    
+
     while type(lexer.source[1]) == "string" and not lexer.Skippable(lexer.source[1]) do
         table.remove(lexer.source, 1)
     end
@@ -160,12 +161,11 @@ end
 
 function lexer.Tokenize(source: string)
     lexer.source = source:split("")
-    
+
     while #lexer.source > 0 do
         local matches: {[string]: ()->()}={
             ["\""] = function() lexer.CollectString() end,
             ["'"] = function() lexer.CollectString() end,
-            ["."] = function() table.insert(lexer.Tokens, {Type="dot", Value=table.remove(lexer.source, 1)}::Token) end,
             ["["] = function() table.insert(lexer.Tokens, {Type="open_bracket", Value=table.remove(lexer.source, 1)}::Token) end,
             ["]"] = function() table.insert(lexer.Tokens, {Type="close_bracket", Value=table.remove(lexer.source, 1)}::Token) end,
             [","] = function() table.insert(lexer.Tokens, {Type="comma", Value=table.remove(lexer.source, 1)}::Token) end,
@@ -177,11 +177,20 @@ function lexer.Tokenize(source: string)
             [";"] = function() table.insert(lexer.Tokens, {Type="semicolon", Value=table.remove(lexer.source, 1)}::Token) end,
             ["="] = function()
                 table.remove(lexer.source, 1)
-                
+
                 if lexer.source[1] == "=" then
                     table.insert(lexer.Tokens, {Type="equals", Value="="..table.remove(lexer.source, 1)}::Token)
                 else
                     table.insert(lexer.Tokens, {Type="assignment", Value="="}::Token)
+                end
+            end,
+            ["."] = function()
+                table.remove(lexer.source, 1)
+
+                if lexer.source[1] == "." then
+                    table.insert(lexer.Tokens, {Type="dot_dot", Value="."..table.remove(lexer.source, 1)}::Token)
+                else
+                    table.insert(lexer.Tokens, {Type="dot", Value="."}::Token)
                 end
             end,
             ["!"] = function()
@@ -250,7 +259,7 @@ function lexer.Tokenize(source: string)
                     table.insert(lexer.Tokens, {Type="star_equals", Value="*"..table.remove(lexer.source, 1)}::Token)
                 elseif lexer.source[1] == "*" then
                     table.remove(lexer.source, 1)
-                    
+
                     if lexer.source[1] == "=" then
                         table.insert(lexer.Tokens, {Type="star_star_equals", Value="**"..table.remove(lexer.source, 1)}::Token)
                     else
@@ -279,26 +288,26 @@ function lexer.Tokenize(source: string)
                 end
             end,
         }
-        
+
         if matches[lexer.source[1]] then
             matches[lexer.source[1]]()
         elseif lexer.Numeric(lexer.source[1]) then
             local number: string = ""
-            
+
             while #lexer.source > 0 and lexer.Numeric(lexer.source[1]) do
                 number = number..table.remove(lexer.source, 1)
-                
+
                 if lexer.source[1] == "." then
                     number = number..table.remove(lexer.source, 1)
 
                     while #lexer.source > 0 and lexer.Numeric(lexer.source[1]) do
                         number = number..table.remove(lexer.source, 1)
                     end
-                    
+
                     break
                 end
             end
-            
+
             table.insert(lexer.Tokens, {Type="number", Value=number}::Token)
         elseif lexer.Alphabetic(lexer.source[1]) or lexer.source[1] == "_" then
             local identifier: string = ""
@@ -306,7 +315,7 @@ function lexer.Tokenize(source: string)
             while #lexer.source > 0 and (lexer.Alphabetic(lexer.source[1]) or lexer.Numeric(lexer.source[1]) or lexer.source[1] == "_") do
                 identifier = identifier..table.remove(lexer.source, 1)
             end
-            
+
             if lexer.Keywords[identifier] then
                 table.insert(lexer.Tokens, {Type=lexer.Keywords[identifier], Value=identifier})
             else
@@ -315,12 +324,12 @@ function lexer.Tokenize(source: string)
         elseif lexer.Skippable(lexer.source[1]) or lexer.source[1] == " " then
             table.remove(lexer.source, 1)
         else
-            error("Lua++/Lexer -> The character \"" + lexer.source[1] + "\" was not recognized during tokenization.")
+            error("Lua++/Lexer -> The character \""..lexer.source[1].."\" was not recognized during tokenization.")
         end
     end
-    
+
     table.insert(lexer.Tokens, {Type="eof", Value="eof"}::Token)
-    
+
     return lexer.Tokens
 end
 

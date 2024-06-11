@@ -1,4 +1,4 @@
---NOTE: This is to be parented under the "luapp.lua" file.
+--NOTE: This file is designed to be parented under the "luapp.lua" file.
 
 --// Variables //--
 
@@ -26,8 +26,8 @@ export type Parser={
     ParseSwitchStmt: ()->Ast.Stmt;
     
     ParseExpr: ()->Ast.Expr;
-    ParseNewExpr: ()->Ast.Expr;
     ParsePostfixUnaryExpr: ()->Ast.Expr;
+    ParseStringConcatenationExpr: ()->Ast.Expr;
     ParseAssignmentExpr: ()->Ast.Expr;
     ParseOrExpr: ()->Ast.Expr;
     ParseAndExpr: ()->Ast.Expr;
@@ -44,6 +44,7 @@ export type Parser={
     ParseCallExpr: (caller: Ast.Expr)->Ast.Expr;
     ParseArguments: ()->{Ast.Expr};
     ParseArgumentList: ()->{Ast.Expr};
+    ParseNewExpr: ()->Ast.Expr;
     ParsePrimaryExpr: ()->Ast.Expr;
 }
 
@@ -520,7 +521,7 @@ function parser.ParseExpr()
 end
 
 function parser.ParsePostfixUnaryExpr()
-    local left = parser.ParseAssignmentExpr()
+    local left = parser.ParseStringConcatenationExpr()
     
     if parser.tokens[1].Type == "plus_plus" or parser.tokens[1].Type == "minus_minus" then
         local operator: Lexer.Token = table.remove(parser.tokens, 1)
@@ -528,6 +529,16 @@ function parser.ParsePostfixUnaryExpr()
         return {Kind="binary"::Ast.NodeType, Right={Kind="identifier"::Ast.NodeType, Value=operator.Value}::Ast.Identifier, Operator=operator, Left=left}::Ast.Binary
     end
     
+    return left
+end
+
+function parser.ParseStringConcatenationExpr()
+    local left = parser.ParseAssignmentExpr()
+
+    while parser.tokens[1].Type == "dot_dot" do
+        left = {Kind="binary"::Ast.NodeType, Left=left, Operator=table.remove(parser.tokens, 1), Right=parser.ParseAssignmentExpr()}::Ast.Binary
+    end
+
     return left
 end
 

@@ -1,4 +1,4 @@
---NOTE: This is to be parented under the "luapp.lua" file.
+--NOTE: This file is designed to be parented under the "luapp.lua" file.
 
 --// Variables //--
 
@@ -20,13 +20,13 @@ export type Compiler={
     CompileClassDeclarationStmt: (node: Ast.ClassDeclaration, indent: number)->string;
     CompileSwitchStmt: (node: Ast.Switch, indent: number)->string;
 
-    CompileExprStmt: (node: Ast.ExprStmt)->string;
-    CompileNewExpr: (node: Ast.New)->string;
-    CompileBinaryExpr: (node: Ast.Binary)->string;
-    CompileMemberExpr: (node: Ast.Member)->string;
-    CompileCallExpr: (node: Ast.Call)->string;
-    CompileObjectExpr: (node: Ast.Object)->string;
-    CompileArrayExpr: (node: Ast.Array)->string;
+    CompileExprStmt: (node: Ast.ExprStmt, indent: number?)->string;
+    CompileNewExpr: (node: Ast.New, indent: number)->string;
+    CompileBinaryExpr: (node: Ast.Binary, indent: number)->string;
+    CompileMemberExpr: (node: Ast.Member, indent: number)->string;
+    CompileCallExpr: (node: Ast.Call, indent: number)->string;
+    CompileObjectExpr: (node: Ast.Object, indent: number)->string;
+    CompileArrayExpr: (node: Ast.Array, indent: number)->string;
 }
 
 --// Module //--
@@ -93,10 +93,10 @@ function compiler.CompileWhileStmt(node, indent)
 end
 
 function compiler.CompileIfStmt(node, indent)
-    local result = "if "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Condition}::Ast.ExprStmt).." then"..(#node.ThenBody > 0 and "\n"..compiler.Compile(node.ThenBody, indent+1) or " ")
+    local result = "if "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Condition}::Ast.ExprStmt).." then"..(#node.ThenBody > 0 and "\n"..compiler.Compile(node.ThenBody, indent+1)..string.rep("\t", indent) or " ")
 
     if node.ElseBody ~= nil then
-        return result.."else"..((node.ElseBody.Kind and node.ElseBody.Kind == "if"::Ast.NodeType) and compiler.CompileIfStmt(node.ElseBody::Ast.If, indent) or " "..(#node.ElseBody > 0 and "\n"..compiler.Compile(node.ElseBody, indent+1) or " ").."end")
+        return result.."else"..((node.ElseBody.Kind and node.ElseBody.Kind == "if"::Ast.NodeType) and compiler.CompileIfStmt(node.ElseBody::Ast.If, indent) or " "..(#node.ElseBody > 0 and "\n"..compiler.Compile(node.ElseBody, indent+1)..string.rep("\t", indent) or " ").."end")
     else
         return result.."end"
     end
@@ -115,6 +115,7 @@ end
 function compiler.CompileClassDeclarationStmt(node, indent)
     local classObjectType = "type CLASS_"..node.Name.Value.."_OBJ_T = {"
     local classInstanceType = "type CLASS_"..node.Name.Value.."_INST_T = {"
+    local classThis = "local CLASS_"..node.Name.Value.."_THIS = {}"
     local result = "local "..node.Name.Value..": CLASS_"..node.Name.Value.."_OBJ_T = {new = function("
 
     if node.Initializer then
@@ -134,11 +135,11 @@ function compiler.CompileClassDeclarationStmt(node, indent)
         result = result..parameter.Value..(index ~= #node.Initializer.Parameters and ", " or "")
     end
 
-    result = result..")\n"..string.rep("\t", indent+1).."local this: CLASS_"..node.Name.Value.."_INST_T = {"
+    result = result..")\n"..string.rep("\t", indent+1).."CLASS_"..node.Name.Value.."_THIS = {"
 
     for _, variable in node.Variables do
         result = result.."\n"..string.rep("\t", indent+2)..variable.Name.Value.." = "..(variable.Value == nil and "nil" or compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=variable.Value}::Ast.ExprStmt))..","
-        classInstanceType = classInstanceType..variable.Name.Value..": any," 
+        classInstanceType = classInstanceType..variable.Name.Value..": any, " 
     end
 
     for _, method in node.Methods do
@@ -150,12 +151,12 @@ function compiler.CompileClassDeclarationStmt(node, indent)
             result = result..paramter.Value..(index ~= #method.Parameters and ", " or "")
             classInstanceType = classInstanceType..paramter.Value..": any"..(index ~= #method.Parameters and ", " or "")
         end
-
-        result = result..")"..(#method.Body > 0 and "\n"..compiler.Compile(method.Body, indent+3)..string.rep("\t", indent+2) or " ").."end,"
-        classInstanceType = classInstanceType..")->any"
+        
+        result = result..")"..(#method.Body > 0 and "\nlocal this = setmetatable(CLASS_"..node.Name.Value.."_THIS, {})\n"..compiler.Compile(method.Body, indent+3)..string.rep("\t", indent+2) or " ").."end,"
+        classInstanceType = classInstanceType..")->any, "
     end
 
-    return classObjectType.."}".."\n"..classInstanceType.."}\n"..result.."\n"..string.rep("\t", indent+1).."}\n"..(#node.Initializer.Body > 0 and compiler.Compile(node.Initializer.Body, indent+1) or "\n")..string.rep("\t", indent+1).."return this\nend}"
+    return classObjectType.."}".."\n"..classInstanceType.."}\n"..classThis.."\n"..result.."\n"..string.rep("\t", indent+1).."}\n"..string.rep("\t", indent+1).."local this = setmetatable(CLASS_"..node.Name.Value.."_THIS, {})\n"..(#node.Initializer.Body > 0 and compiler.Compile(node.Initializer.Body, indent+1) or "\n")..string.rep("\t", indent+1).."\n"..string.rep("\t", indent+1).."return this\nend}"
 end
 
 function compiler.CompileSwitchStmt(node, indent)
@@ -172,7 +173,7 @@ function compiler.CompileSwitchStmt(node, indent)
     return result
 end
 
-function compiler.CompileExprStmt(node)
+function compiler.CompileExprStmt(node, indent)
     local switch: {[Ast.NodeType]: (node: Ast.Expr)->string}={
         ["identifier"]=function(node: Ast.Identifier) return node.Value end,
         ["boolean"]=function(node: Ast.Boolean) return tostring(node.Value) end,
@@ -188,13 +189,13 @@ function compiler.CompileExprStmt(node)
     }
 
     if node.Value and switch[node.Value.Kind] then
-        return switch[node.Value.Kind](node.Value)
+        return switch[node.Value.Kind](node.Value, indent or 0)
     else
         error("Lua++/Compiler -> The expression node \""..node.Value.Kind.."\" was not compiled.")
     end
 end
 
-function compiler.CompileNewExpr(node)
+function compiler.CompileNewExpr(node, indent)
     local result = compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Name}::Ast.ExprStmt)..".new("
 
     for index, parameter in node.Parameters do
@@ -204,7 +205,7 @@ function compiler.CompileNewExpr(node)
     return result..")"
 end
 
-function compiler.CompileBinaryExpr(node)
+function compiler.CompileBinaryExpr(node, indent)
     local unary = false
     local postfix = false
 
@@ -238,10 +239,10 @@ function compiler.CompileBinaryExpr(node)
         return compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Left}::Ast.ExprStmt)..node.Operator.Value
     end
 
-    return node.Operator.Value..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Right}::Ast.ExprStmt)
+    return node.Operator.Value..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Right}::Ast.ExprStmt, indent)
 end
 
-function compiler.CompileMemberExpr(node)
+function compiler.CompileMemberExpr(node, indent)
     local result: string = compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Object}::Ast.ExprStmt)
 
     if node.Computed then
@@ -255,7 +256,7 @@ function compiler.CompileMemberExpr(node)
     return result.."."..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=node.Property}::Ast.ExprStmt)
 end
 
-function compiler.CompileCallExpr(node)
+function compiler.CompileCallExpr(node, indent)
     if node.Caller.Kind == "identifier" and compiler.FunctionOverrides[(node.Caller::Ast.Identifier).Value] then
         return compiler.FunctionOverrides[(node.Caller::Ast.Identifier).Value](compiler, node)
     end
@@ -269,7 +270,7 @@ function compiler.CompileCallExpr(node)
     return result..")"
 end
 
-function compiler.CompileObjectExpr(node)
+function compiler.CompileObjectExpr(node, indent)
     if #node.Properties <= 0 then
         return "{}"
     end
@@ -279,21 +280,21 @@ function compiler.CompileObjectExpr(node)
     for _, property in node.Properties do
         if property.Value then
             if property.Key.Kind ~= "identifier" then
-                result = result.."\t["..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt).."] = "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Value}::Ast.ExprStmt)..",\n"
+                result = result.."\t"..string.rep("\t", indent).."["..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt).."] = "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Value}::Ast.ExprStmt)..",\n"
             else
-                result = result.."\t"..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt).." = "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Value}::Ast.ExprStmt)..",\n"
+                result = result.."\t"..string.rep("\t", indent)..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt).." = "..compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Value}::Ast.ExprStmt)..",\n"
             end
         else
             local keyExpression: string = compiler.CompileExprStmt({Kind="expression_statement"::Ast.NodeType, Value=property.Key}::Ast.ExprStmt)
             if property.Key.Kind ~= "identifier" then
-                result = result.."\t["..keyExpression.."] = "..keyExpression..",\n"
+                result = result.."\t"..string.rep("\t", indent).."["..keyExpression.."] = "..keyExpression..",\n"
             else
-                result = result.."\t"..keyExpression.." = "..keyExpression..",\n"
+                result = result.."\t"..string.rep("\t", indent)..keyExpression.." = "..keyExpression..",\n"
             end
         end
     end
 
-    return result.."}"
+    return result..string.rep("\t", indent).."}"
 end
 
 function compiler.CompileArrayExpr(node)

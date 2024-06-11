@@ -1,4 +1,4 @@
---NOTE: This is to be parented under the "luapp.lua" file.
+--NOTE: This file is designed to be parented under the "luapp.lua" file.
 
 --// Variables //--
 
